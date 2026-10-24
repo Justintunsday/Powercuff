@@ -1,0 +1,35 @@
+{
+  "active_limits" : {
+
+  },
+  "process" : "SpringBoard",
+  "performance_effect" : "unmeasured",
+  "pid" : 62382,
+  "events" : [
+    "stage=injection process=SpringBoard os=16.1.1 pid=62382",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=lpm-observer installed=1",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=off effective=off require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=moderate effective=moderate require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=light effective=light require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=nominal effective=nominal require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=0 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=off require_lpm=1 lpm=0 notification_result=0",
+    "stage=settings requested=heavy effective=heavy require_lpm=1 lpm=1 notification_result=0",
+    "stage=settings requested=heavy effective=off require_lpm=1 lpm=0 notification_result=0"
+  ]
+}

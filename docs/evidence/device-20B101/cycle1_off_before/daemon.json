@@ -1,0 +1,36 @@
+{
+  "active_limits" : {
+
+  },
+  "process" : "thermalmonitord",
+  "performance_effect" : "unmeasured",
+  "pid" : 62310,
+  "events" : [
+    "stage=injection process=thermalmonitord os=16.1.1 pid=62310",
+    "stage=abi selector=initProduct: types=@24@0:8@16 compatible=1",
+    "stage=abi selector=nameofComponent types=^{__CFString=}16@0:8 compatible=1",
+    "stage=abi selector=mitigationType types=i16@0:8 compatible=1",
+    "stage=abi selector=maxLoadingIndex types=I16@0:8 compatible=1",
+    "stage=abi selector=getReleaseMaxLI types=i16@0:8 compatible=1",
+    "stage=abi selector=setMaxLoadingIndex:releaseIndex: types=v24@0:8I16I20 compatible=1",
+    "stage=hooks installed=1",
+    "stage=selection requested=off active=off supported=0 matched=(\n) limits={\n}",
+    "stage=component-map available=(\n) configured={\n}",
+    "stage=product initialized=1 class=tmb16d8e8edc0f89afd1f7fe25529ab7fa",
+    "stage=abi selector=putDeviceInThermalSimulationMode: types=v24@0:8@16 compatible=1",
+    "stage=backend name=additive-loading-index; forced-simulation-api-not-invoked",
+    "stage=selection requested=off active=off supported=1 matched=(\n) limits={\n}",
+    "stage=component-map available=(\n) configured={\n}",
+    "stage=selection requested=off active=off supported=1 matched=(\n) limits={\n}",
+    "stage=component-map available=(\n) configured={\n}",
+    "stage=selection requested=off active=off supported=1 matched=(\n) limits={\n}",
+    "stage=component-map available=(\n) configured={\n}",
+    "stage=observation thermal_state=1 performance_effect=unmeasured restoration_requires-native-control-loop",
+    "stage=selection requested=off active=off supported=1 matched=(\n) limits={\n}",
+    "stage=component-map available=(\n) configured={\n}",
+    "stage=selection requested=off active=off supported=1 matched=(\n) limits={\n}",
+    "stage=component-map available=(\n) configured={\n}",
+    "stage=observation thermal_state=1 performance_effect=unmeasured restoration_requires-native-control-loop",
+    "stage=observation thermal_state=1 performance_effect=unmeasured restoration_requires-native-control-loop"
+  ]
+}

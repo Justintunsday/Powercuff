@@ -1,6 +1,6 @@
 # Repeatable device validation
 
-No target-device results have been recorded yet. Do not fill this document with predicted numbers. Preserve raw logs and benchmark output before drawing conclusions.
+This is the repeatable protocol. See DEVICE-RESULTS.md for the actual device evidence and its limitations. Preserve raw logs and benchmark output before drawing conclusions.
 
 ## Establish the environment
 
@@ -12,7 +12,7 @@ Install and respring according to the README. Record thermalmonitord PID before/
 log stream --style compact --level debug --predicate 'subsystem == "com.rpetrich.powercuff"'
 ```
 
-Some rootless devices do not ship Apple's `log` executable. Missing access is an evidence gap, not an empty successful log. Save daemon crash reports from `/var/mobile/Library/Logs/CrashReporter` and `/Library/Logs/CrashReporter` where readable. Check SpringBoard and thermalmonitord for unexpected exits throughout testing.
+This target does not ship Apple's `log` executable (`log` in zsh is a shell builtin). Use the bounded diagnostic snapshots under `/var/jb/var/log/Powercuff/` and its `mobile/` subdirectory, or external Console. Missing unified-log access is an evidence gap, not an empty successful log. Save daemon crash reports from `/var/mobile/Library/Logs/CrashReporter` and `/Library/Logs/CrashReporter` where readable. Check SpringBoard and thermalmonitord for unexpected exits throughout testing.
 
 ## Evidence ladder
 
@@ -50,3 +50,7 @@ For energy, prefer a calibrated external meter under a fixed charging/load proto
 ## Results to record
 
 For each sample: timestamp, exact commit/DEB hash, device/OS, mode, LPM state, selected and matched caps, before/after native indices, daemon PID, public thermal state, CPU/GPU benchmark name/version/score/duration, power measurement method/units/value, temperature/ambient conditions and any crash or log error. Report medians and dispersion alongside raw samples; do not infer a difference smaller than baseline variation. Keep CPU, GPU, power and restoration conclusions separate. Until these data exist, functional completion remains pending.
+
+## Included measurement tools
+
+Run `powercuffctl benchmark cpu 5` as mobile for the fixed xorshift64 workload. `scripts/validate_device.sh MODE LABEL` saves three five-second samples, before/after status and the daemon snapshot after 15 seconds of settling, in one bounded phase. An Off phase can serve as the recovered baseline and the next cycle's starting control. The Metal GPU workload is implemented but both mobile and root SSH contexts on this target return `Metal device unavailable` (exit 2); an app-based GPU benchmark remains needed. Null power/energy fields are deliberately unmeasured.

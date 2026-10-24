@@ -1,0 +1,17 @@
+{
+  "setter_readback_matched" : 0,
+  "mode_supported" : 1,
+  "hooks_installed" : 1,
+  "native_index_transition_observed" : 0,
+  "restoration" : "Off removes additional caps; verify native-loop recovery with benchmarks",
+  "fresh_daemon_reply" : true,
+  "performance_effect" : "unmeasured",
+  "clamp_calls_mod_65536" : 0,
+  "system_thermal_state" : 1,
+  "active_mode" : "off",
+  "daemon_pid" : 62310,
+  "requested_mode" : "off",
+  "product_initialized" : 1,
+  "mode_rejected" : 0,
+  "clamp_forwarded" : 0
+}

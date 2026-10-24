@@ -1,8 +1,8 @@
 Package: com.rpetrich.powercuff
 Name: Powercuff
-Version: 0.2.0~ios16~beta1
+Version: 0.2.0~ios16~beta2
 Architecture: iphoneos-arm64
-Description: Additional thermal loading-index caps for iOS 16; device validation pending
+Description: Experimental package-power caps for iPhone SE 2 on iOS 16.1.1
 Maintainer: Justintunsday <162324843+Justintunsday@users.noreply.github.com>
 Author: Ryan Petrich <rpetrich+powercuff@gmail.com>
 Section: Tweaks

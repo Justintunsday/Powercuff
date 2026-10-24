@@ -19,7 +19,7 @@
 			<key>cell</key>
 			<string>PSGroupCell</string>
 			<key>footerText</key>
-			<string>© 2020 Ryan Petrich. iOS 16 rootless port: Justintunsday. Device validation pending. Nominal adds no restriction; other modes require device support.</string>
+			<string>© 2020 Ryan Petrich. Port: Justintunsday. Experimental iPhone SE 2 / iOS 16.1.1 build. Nominal adds no cap; Light is unavailable. GPU and battery savings are unverified.</string>
 		</dict>
 		<dict>
 			<key>cell</key>

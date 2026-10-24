@@ -1,0 +1,13 @@
+{
+  "energy_joules" : null,
+  "elapsed_seconds" : 5.0003343749995111,
+  "checksum" : 970003396982486413,
+  "power_watts" : null,
+  "thermal_before" : 0,
+  "iterations_per_second" : 441211274.79604113,
+  "benchmark" : "powercuff-xorshift64-v1",
+  "iterations" : 2206203904,
+  "thermal_after" : 0,
+  "low_power_mode" : false,
+  "gpu_seconds" : 0
+}
