@@ -1,2 +1,12 @@
-#!/bin/bash
-killall thermalmonitord
+#!/bin/sh
+set -eu
+case "${1:-}" in
+    configure)
+        if [ -x /var/jb/usr/bin/killall ]; then
+            /var/jb/usr/bin/killall -TERM thermalmonitord || true
+        fi
+        echo 'Powercuff: respring once to load the SpringBoard settings observer.'
+        echo 'Powercuff: runtime/performance validation remains required; see README.md.'
+        ;;
+esac
+exit 0

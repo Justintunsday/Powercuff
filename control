@@ -1,0 +1,11 @@
+Package: com.rpetrich.powercuff
+Name: Powercuff
+Version: 0.2.0~ios16~beta1
+Architecture: iphoneos-arm64
+Description: Additional thermal loading-index caps for iOS 16; device validation pending
+Maintainer: Justintunsday <162324843+Justintunsday@users.noreply.github.com>
+Author: Ryan Petrich <rpetrich+powercuff@gmail.com>
+Section: Tweaks
+Depends: firmware (>= 16.0), firmware (<< 17.0), ellekit (>= 1.2), preferenceloader (>= 2.2.2)
+Homepage: https://github.com/Justintunsday/Powercuff
+Tag: purpose::extension

@@ -1,0 +1,101 @@
+name: iOS 16 Rootless
+on:
+  push:
+    branches: [feature/ios16-rootless]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rootless-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      THEOS: ${{ github.workspace }}/.theos-toolchain
+      THEOS_REV: 304e0799973e8145f32e4ca2de6c747a84b758ce
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      HOMEBREW_NO_AUTO_UPDATE: 1
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Configure Apple SDK and pinned Theos
+        run: |
+          set -euo pipefail
+          mkdir -p build-logs
+          {
+            test -d "$DEVELOPER_DIR"
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-path
+            test "$(xcrun --sdk iphoneos --show-sdk-version)" = 18.5
+            brew install make ldid xz
+            echo "$(brew --prefix make)/libexec/gnubin" >> "$GITHUB_PATH"
+            git init "$THEOS"
+            git -C "$THEOS" remote add origin https://github.com/theos/theos.git
+            git -C "$THEOS" fetch --depth 1 origin "$THEOS_REV"
+            git -C "$THEOS" checkout --detach FETCH_HEAD
+            git -C "$THEOS" submodule update --init --recursive --depth 1
+            test "$(git -C "$THEOS" rev-parse HEAD)" = "$THEOS_REV"
+            git -C "$THEOS" submodule status --recursive
+            ldid -h 2>&1 || true
+            command -v ldid
+            command -v xz
+            python3 --version
+          } 2>&1 | tee build-logs/setup.log
+      - name: Check safety invariants and preference resources
+        run: |
+          set -euo pipefail
+          clang -std=c11 -Wall -Wextra -Werror tests/policy.c -o /tmp/powercuff-policy
+          /tmp/powercuff-policy | tee build-logs/policy.log
+          plutil -lint layout/Library/PreferenceLoader/Preferences/Powercuff/Powercuff.plist
+          plutil -lint Powercuff.plist
+          sh -n layout/DEBIAN/postinst layout/DEBIAN/prerm layout/DEBIAN/postrm
+      - name: Compile and package
+        run: |
+          set -euo pipefail
+          make clean package FINALPACKAGE=1 THEOS_PLATFORM_DEB_COMPRESSION_TYPE=gzip 2>&1 | tee build-logs/build.log
+          if grep -Ei '(^|[[:space:]])warning:' build-logs/build.log; then
+            echo 'Unexpected build warnings require review.' >&2
+            exit 1
+          fi
+          python3 scripts/verify_package.py packages/*.deb --extract build-logs/extracted | tee build-logs/package-verification.log
+          for binary in build-logs/extracted/var/jb/Library/MobileSubstrate/DynamicLibraries/Powercuff.dylib build-logs/extracted/var/jb/usr/bin/powercuffctl; do
+            xcrun lipo -verify_arch arm64 arm64e "$binary"
+            xcrun otool -L "$binary" | tee -a build-logs/macho.log
+            xcrun otool -l "$binary" | tee -a build-logs/load-commands.log
+            ldid -e "$binary" >> build-logs/entitlements.log
+          done
+          shasum -a 256 packages/*.deb | tee packages/SHA256SUMS
+          {
+            echo "commit=$GITHUB_SHA"
+            echo "run=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            echo "theos=$THEOS_REV"
+            xcodebuild -version
+            xcrun --sdk iphoneos --show-sdk-version
+          } > packages/BUILD-INFO.txt
+      - name: Upload verified DEB
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Powercuff-iOS16-rootless-${{ github.sha }}
+          path: |
+            packages/*.deb
+            packages/SHA256SUMS
+            packages/BUILD-INFO.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Preserve diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: Powercuff-build-logs-${{ github.sha }}
+          path: build-logs/
+          if-no-files-found: error
+          retention-days: 30

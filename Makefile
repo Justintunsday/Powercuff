@@ -1,17 +1,21 @@
+THEOS_PACKAGE_SCHEME = rootless
+ARCHS = arm64 arm64e
+TARGET = iphone:clang:latest:16.0
+
+include $(THEOS)/makefiles/common.mk
+
 TWEAK_NAME = Powercuff
 Powercuff_FILES = Powercuff.x
 Powercuff_FRAMEWORKS = Foundation
-Powercuff_USE_MODULES = false
+Powercuff_CFLAGS = -fobjc-arc -Wall -Wextra -Werror -Wno-unused-parameter
 
-IPHONE_ARCHS = arm64 arm64e
-
-TARGET_IPHONEOS_DEPLOYMENT_VERSION = 7.0
-TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64 = 7.0
-TARGET_IPHONEOS_DEPLOYMENT_VERSION_arm64e = 8.4
-
-ADDITIONAL_CFLAGS = -std=c99
+TOOL_NAME = powercuffctl
+powercuffctl_FILES = tools/powercuffctl.m
+powercuffctl_FRAMEWORKS = Foundation
+powercuffctl_CFLAGS = -fobjc-arc -Wall -Wextra -Werror -Wno-unused-parameter -I.
+powercuffctl_INSTALL_PATH = /usr/bin
+powercuffctl_CODESIGN_FLAGS = -Sentitlements.plist
 
 INSTALL_TARGET_PROCESSES = thermalmonitord SpringBoard
-
-include framework/makefiles/common.mk
-include framework/makefiles/tweak.mk
+include $(THEOS_MAKE_PATH)/tweak.mk
+include $(THEOS_MAKE_PATH)/tool.mk

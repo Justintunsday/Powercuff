@@ -5,3 +5,8 @@ _
 obj
 .DS_Store
 .theos
+packages/
+build-logs/
+artifacts/
+.theos-toolchain/
+__pycache__/

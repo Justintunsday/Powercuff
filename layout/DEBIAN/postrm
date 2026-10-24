@@ -1,7 +1,11 @@
 #!/bin/sh
-
-killall thermalmonitord
-
-rm /var/mobile/Library/Preferences/com.apple.coreduetd.batterysaver.plist
-
+set -eu
+case "${1:-}" in
+    remove|purge)
+        if [ -x /var/jb/usr/bin/killall ]; then
+            /var/jb/usr/bin/killall -TERM thermalmonitord || true
+        fi
+        echo 'Powercuff: respring to unload the SpringBoard observer.'
+        ;;
+esac
 exit 0
