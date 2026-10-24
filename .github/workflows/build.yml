@@ -45,6 +45,7 @@ jobs:
             git -C "$THEOS" submodule update --init --recursive --depth 1
             test "$(git -C "$THEOS" rev-parse HEAD)" = "$THEOS_REV"
             git -C "$THEOS" submodule status --recursive
+            python3 scripts/prepare_theos.py
             ldid -h 2>&1 || true
             command -v ldid
             command -v xz
