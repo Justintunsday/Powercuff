@@ -84,7 +84,7 @@ def verify(path, extract):
         for name in ("postinst", "prerm", "postrm"):
             require(name in files and files[name].mode & 0o111, f"Missing executable {name}")
             script = archive.extractfile(files[name]).read()
-            require(b"\r" not in script and script.startswith(b"#!/bin/sh\n"), f"Invalid shell script: {name}")
+            require(b"\r" not in script and script.startswith(b"#!/var/jb/bin/sh\n"), f"Invalid rootless shell interpreter: {name}")
             require(b"rm " not in script, "Removal script deletes preferences")
     expected = {
         "var/jb/Library/MobileSubstrate/DynamicLibraries/Powercuff.dylib",
