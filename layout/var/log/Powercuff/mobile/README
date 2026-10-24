@@ -1,0 +1,2 @@
+This directory belongs to mobile after installation so SpringBoard can save its
+own diagnostic snapshot. The root daemon snapshot remains in the parent folder.

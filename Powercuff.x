@@ -54,15 +54,11 @@ static void RecordFormatted(NSString *format, ...) {
     RecordFormatted(@format, ##__VA_ARGS__); \
 } while (0)
 
-// Verified from 20B101 thermalmonitord's mitigation table. Deliberately limit
-// this port to CPU/GPU/package power; screen/radio/charger controls stay native.
+// Verified in PackagePowerCC's initializer and on the live 20B101 device.
+// Table positions are NOT mitigationType values. Restrict to this proven class.
 static NSString *KeyForComponent(ComponentControl *component) {
-    switch ([component mitigationType]) {
-        case 0: return @"dtCPU";
-        case 1: return @"dtGPU";
-        case 12: return @"dtPackage";
-        default: return nil;
-    }
+    Class package = NSClassFromString(@"PackagePowerCC");
+    return package && [component isKindOfClass:package] && [component mitigationType] == 13 ? @"dtPackage" : nil;
 }
 
 static void WriteDiagnostics(NSString *process) {
@@ -73,7 +69,9 @@ static void WriteDiagnostics(NSString *process) {
         @"events": snapshot ?: @[], @"active_limits": limits ?: @{},
         @"performance_effect": @"unmeasured" };
     NSData *json = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
-    NSString *path = [ROOT_PATH_NS(@"/var/log/Powercuff") stringByAppendingPathComponent:[process stringByAppendingPathExtension:@"json"]];
+    NSString *directory = ROOT_PATH_NS(@"/var/log/Powercuff");
+    if ([process isEqualToString:@"SpringBoard"]) directory = [directory stringByAppendingPathComponent:@"mobile"];
+    NSString *path = [directory stringByAppendingPathComponent:[process stringByAppendingPathExtension:@"json"]];
     NSError *error;
     if (![json writeToFile:path options:NSDataWritingAtomic error:&error])
         os_log_error(logger, "diagnostic-file-error=%{public}@", error);
@@ -140,7 +138,7 @@ static void SelectMode(NSUInteger mode) {
                 if (![component isKindOfClass:NSClassFromString(@"ComponentControl")]) continue;
                 NSString *name = (__bridge NSString *)[component nameofComponent];
                 NSString *key = KeyForComponent(component);
-                [available addObject:@{ @"name": name ?: @"(null)", @"type": @([component mitigationType]), @"key": key ?: @"native-only" }];
+                [available addObject:@{ @"name": name ?: @"(null)", @"class": NSStringFromClass(object_getClass(component)), @"type": @([component mitigationType]), @"key": key ?: @"native-only" }];
                 if (key && limits[key] && [limits[key] unsignedIntValue] < 100)
                     [matched addObject:key];
             }

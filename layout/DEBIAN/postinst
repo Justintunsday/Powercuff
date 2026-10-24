@@ -2,6 +2,7 @@
 set -eu
 case "${1:-}" in
     configure)
+        /var/jb/usr/bin/chown 501:501 /var/jb/var/log/Powercuff/mobile
         if [ -x /var/jb/usr/bin/killall ]; then
             /var/jb/usr/bin/killall -TERM thermalmonitord || true
         fi
