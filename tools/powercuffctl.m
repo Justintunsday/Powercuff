@@ -3,6 +3,7 @@
 #import <unistd.h>
 #import "PowercuffPolicy.h"
 #import "PowercuffProtocol.h"
+extern int PCBenchmark(const char *kind, NSUInteger seconds);
 
 static int RequestStatus(void) {
     int request = -1, response = -1, status = -1;
@@ -52,6 +53,12 @@ static int RequestStatus(void) {
 
 int main(int argc, char **argv) {
     @autoreleasepool {
+        if (argc == 4 && strcmp(argv[1], "benchmark") == 0) {
+            char *end = NULL;
+            unsigned long seconds = strtoul(argv[3], &end, 10);
+            if (!argv[3][0] || !end || *end) return 1;
+            return PCBenchmark(argv[2], seconds);
+        }
         if (argc == 2 && strcmp(argv[1], "status") == 0) return RequestStatus();
         if (argc == 2 && strcmp(argv[1], "restore") == 0) {
             uint32_t result = notify_post(PC_RESTORE);
@@ -81,7 +88,7 @@ int main(int argc, char **argv) {
             puts("Settings saved and notification posted; use status to check the daemon. This is not proof of throttling.");
             return 0;
         }
-        fputs("Usage: powercuffctl status | restore | mode off|nominal|light|moderate|heavy | lpm-only on|off\n", stderr);
+        fputs("Usage: powercuffctl status | restore | mode off|nominal|light|moderate|heavy | lpm-only on|off | benchmark cpu|gpu 2..30\n", stderr);
         return 1;
     }
 }

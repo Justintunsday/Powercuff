@@ -13,8 +13,8 @@ Powercuff_FRAMEWORKS = Foundation
 Powercuff_CFLAGS = -fobjc-arc -Wall -Wextra -Werror -Wno-unused-parameter
 
 TOOL_NAME = powercuffctl
-powercuffctl_FILES = tools/powercuffctl.m
-powercuffctl_FRAMEWORKS = Foundation
+powercuffctl_FILES = tools/powercuffctl.m tools/benchmarks.m
+powercuffctl_FRAMEWORKS = Foundation Metal
 powercuffctl_CFLAGS = -fobjc-arc -Wall -Wextra -Werror -Wno-unused-parameter -I.
 powercuffctl_INSTALL_PATH = /usr/bin
 powercuffctl_CODESIGN_FLAGS = -Sentitlements.plist
