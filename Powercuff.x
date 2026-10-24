@@ -14,6 +14,8 @@
 @end
 @interface ComponentControl : NSObject
 - (NSString *)nameofComponent;
+- (unsigned int)maxLoadingIndex;
+- (int)getReleaseMaxLI;
 - (void)setMaxLoadingIndex:(unsigned int)index releaseIndex:(unsigned int)release;
 @end
 
@@ -24,6 +26,7 @@ static NSDictionary<NSString *, NSNumber *> *activeLimits;
 static NSUInteger requestedMode, activeMode;
 static BOOL hookReady, productSeen, supported, rejected, restoreLatch;
 static uint64_t clampCalls;
+static BOOL setterAccepted, stateTransition;
 static int modeToken = -1, settingsToken = -1, diagnosticToken = -1;
 static int responseToken = -1, statusToken = -1, restoreToken = -1;
 static BOOL receivedSelection;
@@ -50,7 +53,8 @@ static void PublishStatus(void) {
     @synchronized (stateLock) {
         state = activeMode | (requestedMode << 3) | ((uint64_t)productSeen << 6) |
             ((uint64_t)supported << 7) | ((uint64_t)rejected << 8) | ((uint64_t)hookReady << 9) |
-            ((uint64_t)(clampCalls != 0) << 10) | ((clampCalls & 0xffff) << 16) | ((uint64_t)getpid() << 32);
+            ((uint64_t)(clampCalls != 0) << 10) | ((uint64_t)setterAccepted << 11) |
+            ((uint64_t)stateTransition << 12) | ((clampCalls & 0xffff) << 16) | ((uint64_t)getpid() << 32);
     }
     if (statusToken >= 0 && notify_set_state(statusToken, state) != NOTIFY_STATUS_OK)
         PCLog("stage=error operation=publish-status");
@@ -101,6 +105,8 @@ static void SelectMode(NSUInteger mode) {
         activeMode = canApply ? mode : 0;
         activeLimits = canApply ? limits : @{};
         clampCalls = 0;
+        setterAccepted = NO;
+        stateTransition = NO;
     }
     PCLog("stage=selection requested=%{public}s active=%{public}s supported=%d matched=%{public}@ limits=%{public}@",
           PCModeName(mode), PCModeName(canApply ? mode : 0), canApply, matched, canApply ? limits : @{});
@@ -157,14 +163,27 @@ static void CaptureProduct(CommonProduct *product) {
     }
     unsigned int output = cap ? PCClampIndex(index, cap.unsignedIntValue) : index;
     unsigned int outputRelease = cap ? PCClampIndex(release, cap.unsignedIntValue) : release;
+    BOOL changedInput = output != index || outputRelease != release;
+    unsigned int before = changedInput ? [self maxLoadingIndex] : 0;
+    int beforeRelease = changedInput ? [self getReleaseMaxLI] : 0;
     %orig(output, outputRelease); // Always forward, on Apple's caller thread.
-    if (output != index || outputRelease != release) {
-        @synchronized (stateLock) { clampCalls++; }
+    if (changedInput) {
+        unsigned int after = [self maxLoadingIndex];
+        int afterRelease = [self getReleaseMaxLI];
+        BOOL accepted = after == output && afterRelease >= 0 && (unsigned int)afterRelease == outputRelease;
+        BOOL transitioned = accepted && (before != after || beforeRelease != afterRelease);
+        @synchronized (stateLock) {
+            clampCalls++;
+            setterAccepted |= accepted;
+            stateTransition |= transitioned;
+        }
         NSString *signature = [NSString stringWithFormat:@"%lu:%u:%u:%u:%u", (unsigned long)mode, index, release, output, outputRelease];
         if (![objc_getAssociatedObject(self, lastClampKey) isEqual:signature]) {
             objc_setAssociatedObject(self, lastClampKey, signature, OBJC_ASSOCIATION_COPY_NONATOMIC);
             PCLog("stage=clamp-forwarded component=%{public}@ mode=%{public}s apple=%u/%u forwarded=%u/%u performance_effect=unmeasured",
                   name, PCModeName(mode), index, release, output, outputRelease);
+            PCLog("stage=native-readback component=%{public}@ before=%u/%d after=%u/%d setter_accepted=%d state_transition=%d hardware_effect=unverified",
+                  name, before, beforeRelease, after, afterRelease, accepted, transitioned);
         }
     }
 }
@@ -224,6 +243,8 @@ static BOOL RegisterCheck(const char *name, int *token) {
             Class component = NSClassFromString(@"ComponentControl");
             if (!MethodMatches(product, @selector(initProduct:), "@", @[@"@"]) ||
                 !MethodMatches(component, @selector(nameofComponent), "@", @[]) ||
+                !MethodMatches(component, @selector(maxLoadingIndex), "I", @[]) ||
+                !MethodMatches(component, @selector(getReleaseMaxLI), "i", @[]) ||
                 !MethodMatches(component, @selector(setMaxLoadingIndex:releaseIndex:), "v", @[@"I", @"I"])) {
                 PCLog("stage=unsupported reason=private-abi; no-hooks-installed");
             } else {

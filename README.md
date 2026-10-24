@@ -2,8 +2,9 @@
 
 Experimental port for iPhone SE 2 (iPhone12,8), iOS 16.1.1 (20B101), Dopamine and ElleKit 1.2. **On-device compatibility, throttling, energy savings and restoration are not yet verified.** A successful Actions build proves compilation and package structure only.
 
-Fork: https://github.com/Justintunsday/Powercuff  
-Development branch: `feature/ios16-rootless`  
+Fork: https://github.com/Justintunsday/Powercuff
+
+Development branch: `feature/ios16-rootless`
 Official builds: https://github.com/Justintunsday/Powercuff/actions/workflows/build.yml?query=branch%3Afeature%2Fios16-rootless
 
 ## Thermal behavior and limitations
@@ -27,7 +28,7 @@ Limits come from the running product's `simulatedThermalMitigationLimits` dictio
 | Moderate | Device's `moderate` limits, wherever exact component matches exist. |
 | Heavy | Device's `heavy` limits, wherever exact component matches exist. |
 
-Partial matches are listed in logs; other components receive their unchanged native inputs. Having a matched dictionary does not prove the daemon uses this setter for CPU/GPU budgets on this firmware. `clamp-forwarded` proves argument forwarding only; readback and benchmarks are separate evidence. Different mode maps may be identical, and some firmware can route mitigation through another path. These conditions must be diagnosed on the target device rather than reported as effective throttling.
+Partial matches are listed in logs; other components receive their unchanged native inputs. Having a matched dictionary does not prove the daemon uses this setter for CPU/GPU budgets on this firmware. `clamp-forwarded` proves argument forwarding only. Separately, `native-readback` records before/after indices, whether the setter stored the requested indices and whether they changed. This is still not hardware or benchmark evidence. Different mode maps may be identical, and some firmware can route mitigation through another path. These conditions must be diagnosed on the target device rather than reported as effective throttling.
 
 The tweak never patches sensors, thermal shutdown, watchdogs, system files or CPMS, and never sets `allowLIOverride` or disables a native thermal action. Its cap is removed immediately in memory by Off; actual release follows Apple's next updates and release rate. A stuck or bypassed native path requires further diagnosis. Restarting thermalmonitord removes all in-process state.
 

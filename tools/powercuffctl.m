@@ -39,12 +39,15 @@ static int RequestStatus(void) {
         @"product_initialized": @((state & (1 << 6)) != 0), @"mode_supported": @((state & (1 << 7)) != 0),
         @"mode_rejected": @((state & (1 << 8)) != 0), @"hooks_installed": @((state & (1 << 9)) != 0),
         @"clamp_forwarded": @((state & (1 << 10)) != 0), @"clamp_calls_mod_65536": @((state >> 16) & 0xffff),
+        @"setter_readback_matched": @((state & (1 << 11)) != 0),
+        @"native_index_transition_observed": @((state & (1 << 12)) != 0),
         @"system_thermal_state": @(NSProcessInfo.processInfo.thermalState), @"performance_effect": @"unmeasured",
         @"restoration": @"Off removes additional caps; verify native-loop recovery with benchmarks"
     };
     NSData *json = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
     puts([[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding].UTF8String);
-    return state & (1 << 8) ? 3 : 0;
+    if (state & (1 << 8)) return 3;
+    return (state & (1 << 6)) && (state & (1 << 9)) ? 0 : 2;
 }
 
 int main(int argc, char **argv) {

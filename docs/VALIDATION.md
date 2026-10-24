@@ -22,6 +22,7 @@ Some rootless devices do not ship Apple's `log` executable. Missing access is an
 | `stage=abi` + `stage=hooks installed=1` | Runtime types matched and method implementations changed | Setter ever called |
 | `stage=settings` + `stage=selection` | LPM gate, selected map and matching components | Driver budget accepted |
 | `stage=clamp-forwarded` | Original setter was invoked with lower indices | Setter stored them or changed hardware |
+| `stage=native-readback`, `setter_accepted=1`, `state_transition=1` | Native getter values match the forwarded request and changed | A hardware budget or throughput changed |
 | Native getter/CPMS or driver telemetry before/after | Observed state transition | CPU/GPU throughput or energy savings |
 | Repeated controlled benchmark/power samples | Measured practical effect and Off recovery | Universal effects on other devices/workloads |
 

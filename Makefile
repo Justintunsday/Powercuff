@@ -3,6 +3,9 @@ ARCHS = arm64 arm64e
 TARGET = iphone:clang:latest:16.0
 
 include $(THEOS)/makefiles/common.mk
+# Xcode 16 ld warns on this obsolete flag supplied by the pinned Theos target.
+# Remove the deprecated option rather than suppressing linker diagnostics.
+_THEOS_TARGET_LDFLAGS := $(subst -multiply_defined suppress,,$(_THEOS_TARGET_LDFLAGS))
 
 TWEAK_NAME = Powercuff
 Powercuff_FILES = Powercuff.x
