@@ -1,0 +1,3 @@
+Powercuff diagnostic snapshots are written here only on settings/status requests.
+They contain process lifecycle, ABI, selection, forwarded indices and readback.
+No benchmark or hardware effect is inferred from these events.

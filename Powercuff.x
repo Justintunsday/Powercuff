@@ -4,6 +4,8 @@
 #import <os/log.h>
 #import <math.h>
 #import <unistd.h>
+#import <sys/sysctl.h>
+#import <rootless.h>
 #import "PowercuffPolicy.h"
 #import "PowercuffProtocol.h"
 
@@ -13,7 +15,8 @@
 - (NSArray *)listofComponentControl;
 @end
 @interface ComponentControl : NSObject
-- (NSString *)nameofComponent;
+- (CFStringRef)nameofComponent;
+- (int)mitigationType;
 - (unsigned int)maxLoadingIndex;
 - (int)getReleaseMaxLI;
 - (void)setMaxLoadingIndex:(unsigned int)index releaseIndex:(unsigned int)release;
@@ -31,7 +34,50 @@ static int modeToken = -1, settingsToken = -1, diagnosticToken = -1;
 static int responseToken = -1, statusToken = -1, restoreToken = -1;
 static BOOL receivedSelection;
 static const void *lastClampKey = &lastClampKey;
-#define PCLog(format, ...) os_log_with_type(logger, OS_LOG_TYPE_DEFAULT, format, ##__VA_ARGS__)
+static NSMutableArray<NSString *> *events;
+static void RecordEvent(NSString *event) {
+    @synchronized (stateLock) {
+        if (!events) events = [NSMutableArray array];
+        if (events.count >= 150) [events removeObjectAtIndex:0];
+        [events addObject:event];
+    }
+}
+static void RecordFormatted(NSString *format, ...) {
+    va_list arguments;
+    va_start(arguments, format);
+    NSString *text = [[NSString alloc] initWithFormat:[format stringByReplacingOccurrencesOfString:@"{public}" withString:@""] arguments:arguments];
+    va_end(arguments);
+    RecordEvent(text);
+}
+#define PCLog(format, ...) do { \
+    os_log_with_type(logger, OS_LOG_TYPE_DEFAULT, format, ##__VA_ARGS__); \
+    RecordFormatted(@format, ##__VA_ARGS__); \
+} while (0)
+
+// Verified from 20B101 thermalmonitord's mitigation table. Deliberately limit
+// this port to CPU/GPU/package power; screen/radio/charger controls stay native.
+static NSString *KeyForComponent(ComponentControl *component) {
+    switch ([component mitigationType]) {
+        case 0: return @"dtCPU";
+        case 1: return @"dtGPU";
+        case 12: return @"dtPackage";
+        default: return nil;
+    }
+}
+
+static void WriteDiagnostics(NSString *process) {
+    NSArray *snapshot;
+    NSDictionary *limits;
+    @synchronized (stateLock) { snapshot = [events copy]; limits = activeLimits; }
+    NSDictionary *report = @{ @"process": process, @"pid": @(getpid()),
+        @"events": snapshot ?: @[], @"active_limits": limits ?: @{},
+        @"performance_effect": @"unmeasured" };
+    NSData *json = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
+    NSString *path = [ROOT_PATH_NS(@"/var/log/Powercuff") stringByAppendingPathComponent:[process stringByAppendingPathExtension:@"json"]];
+    NSError *error;
+    if (![json writeToFile:path options:NSDataWritingAtomic error:&error])
+        os_log_error(logger, "diagnostic-file-error=%{public}@", error);
+}
 
 static BOOL MethodMatches(Class cls, SEL selector, const char *result, NSArray<NSString *> *arguments) {
     Method method = class_getInstanceMethod(cls, selector);
@@ -75,8 +121,9 @@ static NSDictionary *CopyModeLimits(CommonProduct *product, NSUInteger mode) {
         id value = limits[key];
         if (![key isKindOfClass:[NSString class]] || ![value isKindOfClass:[NSNumber class]]) return nil;
         double number = [value doubleValue];
-        if (!isfinite(number) || number < 0 || number > 100 || floor(number) != number) return nil;
-        validated[key] = value;
+        // Device D79AP configuration uses 101 as the unrestricted sentinel.
+        if (!isfinite(number) || number < 0 || number > 101 || floor(number) != number) return nil;
+        if (number <= 100) validated[key] = value;
     }
     return [validated copy];
 }
@@ -85,14 +132,17 @@ static void SelectMode(NSUInteger mode) {
     CommonProduct *product = currentProduct;
     NSDictionary *limits = product ? CopyModeLimits(product, mode) : nil;
     NSMutableArray *matched = [NSMutableArray array];
+    NSMutableArray *available = [NSMutableArray array];
     if (product && mode > 1 && limits && MethodMatches(object_getClass(product), @selector(listofComponentControl), "@", @[])) {
         id components = [product listofComponentControl];
         if ([components isKindOfClass:[NSArray class]]) {
             for (id component in components) {
                 if (![component isKindOfClass:NSClassFromString(@"ComponentControl")]) continue;
-                NSString *name = [component nameofComponent];
-                if ([name isKindOfClass:[NSString class]] && limits[name] && [limits[name] unsignedIntValue] < 100)
-                    [matched addObject:name];
+                NSString *name = (__bridge NSString *)[component nameofComponent];
+                NSString *key = KeyForComponent(component);
+                [available addObject:@{ @"name": name ?: @"(null)", @"type": @([component mitigationType]), @"key": key ?: @"native-only" }];
+                if (key && limits[key] && [limits[key] unsignedIntValue] < 100)
+                    [matched addObject:key];
             }
         }
     }
@@ -110,10 +160,12 @@ static void SelectMode(NSUInteger mode) {
     }
     PCLog("stage=selection requested=%{public}s active=%{public}s supported=%d matched=%{public}@ limits=%{public}@",
           PCModeName(mode), PCModeName(canApply ? mode : 0), canApply, matched, canApply ? limits : @{});
+    PCLog("stage=component-map available=%{public}@ configured=%{public}@", available, limits ?: @{});
     if (!canApply && mode != 0)
         PCLog("stage=unsupported reason=missing-product-configuration-or-component-match requested=%{public}s", PCModeName(mode));
     if (mode == 1) PCLog("stage=limitation mode=nominal effect=no-additional-cap; performance-difference-not-expected");
     PublishStatus();
+    WriteDiagnostics(@"thermalmonitord");
 }
 
 static void ReceiveSelection(void) {
@@ -156,9 +208,10 @@ static void CaptureProduct(CommonProduct *product) {
 - (void)setMaxLoadingIndex:(unsigned int)index releaseIndex:(unsigned int)release {
     NSNumber *cap;
     NSUInteger mode;
-    NSString *name = [self nameofComponent];
+    NSString *name = (__bridge NSString *)[self nameofComponent];
+    NSString *key = KeyForComponent(self);
     @synchronized (stateLock) {
-        cap = [name isKindOfClass:[NSString class]] ? activeLimits[name] : nil;
+        cap = key && currentProduct ? activeLimits[key] : nil;
         mode = activeMode;
     }
     unsigned int output = cap ? PCClampIndex(index, cap.unsignedIntValue) : index;
@@ -202,6 +255,7 @@ static void PublishSettings(void) {
     if (result == NOTIFY_STATUS_OK) result = notify_post(PC_MODE);
     PCLog("stage=settings requested=%{public}s effective=%{public}s require_lpm=%d lpm=%d notification_result=%u",
           PCModeName(mode), PCModeName(effective), gated, lowPower, result);
+    WriteDiagnostics(@"SpringBoard");
 }
 
 static BOOL RegisterCheck(const char *name, int *token) {
@@ -222,8 +276,13 @@ static BOOL RegisterCheck(const char *name, int *token) {
         NSOperatingSystemVersion version = NSProcessInfo.processInfo.operatingSystemVersion;
         PCLog("stage=injection process=%{public}@ os=%ld.%ld.%ld pid=%d", process,
               (long)version.majorVersion, (long)version.minorVersion, (long)version.patchVersion, getpid());
-        if (version.majorVersion != 16) {
-            PCLog("stage=unsupported reason=os-version expected=16");
+        char model[64] = {0}, build[64] = {0};
+        size_t modelSize = sizeof(model), buildSize = sizeof(build);
+        BOOL target = sysctlbyname("hw.machine", model, &modelSize, NULL, 0) == 0 &&
+            sysctlbyname("kern.osversion", build, &buildSize, NULL, 0) == 0 &&
+            strcmp(model, "iPhone12,8") == 0 && strcmp(build, "20B101") == 0;
+        if (version.majorVersion != 16 || !target) {
+            PCLog("stage=unsupported reason=unverified-device-build model=%{public}s build=%{public}s", model, build);
             return;
         }
         if ([process isEqualToString:@"SpringBoard"]) {
@@ -242,7 +301,8 @@ static BOOL RegisterCheck(const char *name, int *token) {
             Class product = NSClassFromString(@"CommonProduct");
             Class component = NSClassFromString(@"ComponentControl");
             if (!MethodMatches(product, @selector(initProduct:), "@", @[@"@"]) ||
-                !MethodMatches(component, @selector(nameofComponent), "@", @[]) ||
+                !MethodMatches(component, @selector(nameofComponent), @encode(CFStringRef), @[]) ||
+                !MethodMatches(component, @selector(mitigationType), "i", @[]) ||
                 !MethodMatches(component, @selector(maxLoadingIndex), "I", @[]) ||
                 !MethodMatches(component, @selector(getReleaseMaxLI), "i", @[]) ||
                 !MethodMatches(component, @selector(setMaxLoadingIndex:releaseIndex:), "v", @[@"I", @"I"])) {
@@ -269,6 +329,7 @@ static BOOL RegisterCheck(const char *name, int *token) {
                 PublishStatus();
                 PCLog("stage=observation thermal_state=%ld performance_effect=unmeasured restoration_requires-native-control-loop",
                       (long)NSProcessInfo.processInfo.thermalState);
+                WriteDiagnostics(@"thermalmonitord");
                 if (notify_get_state(token, &nonce) == NOTIFY_STATUS_OK && notify_set_state(responseToken, nonce) == NOTIFY_STATUS_OK) notify_post(PC_RESPONSE);
             });
             if (result != NOTIFY_STATUS_OK) PCLog("stage=error operation=register-diagnostics result=%u", result);
