@@ -35,6 +35,7 @@ static int responseToken = -1, statusToken = -1, restoreToken = -1;
 static BOOL receivedSelection;
 static const void *lastClampKey = &lastClampKey;
 static NSMutableArray<NSString *> *events;
+static BOOL MethodMatches(Class cls, SEL selector, const char *result, NSArray<NSString *> *arguments);
 static void RecordEvent(NSString *event) {
     @synchronized (stateLock) {
         if (!events) events = [NSMutableArray array];
@@ -65,7 +66,22 @@ static void WriteDiagnostics(NSString *process) {
     NSArray *snapshot;
     NSDictionary *limits;
     @synchronized (stateLock) { snapshot = [events copy]; limits = activeLimits; }
+    NSMutableArray *readback = [NSMutableArray array];
+    CommonProduct *product = currentProduct;
+    if (hookReady && product && MethodMatches(object_getClass(product), @selector(listofComponentControl), "@", @[])) {
+        id components = [product listofComponentControl];
+        if ([components isKindOfClass:[NSArray class]]) {
+            for (ComponentControl *component in components) {
+                if (!KeyForComponent(component)) continue;
+                [readback addObject:@{ @"class": NSStringFromClass(object_getClass(component)),
+                    @"type": @([component mitigationType]), @"key": KeyForComponent(component),
+                    @"index": @([component maxLoadingIndex]), @"release_index": @([component getReleaseMaxLI]) }];
+            }
+        }
+    }
     NSDictionary *report = @{ @"process": process, @"pid": @(getpid()),
+        @"timestamp": [NSISO8601DateFormatter stringFromDate:NSDate.date timeZone:[NSTimeZone timeZoneForSecondsFromGMT:0] formatOptions:NSISO8601DateFormatWithInternetDateTime],
+        @"native_readback": readback,
         @"events": snapshot ?: @[], @"active_limits": limits ?: @{},
         @"performance_effect": @"unmeasured" };
     NSData *json = [NSJSONSerialization dataWithJSONObject:report options:NSJSONWritingPrettyPrinted error:nil];
@@ -98,7 +114,8 @@ static void PublishStatus(void) {
         state = activeMode | (requestedMode << 3) | ((uint64_t)productSeen << 6) |
             ((uint64_t)supported << 7) | ((uint64_t)rejected << 8) | ((uint64_t)hookReady << 9) |
             ((uint64_t)(clampCalls != 0) << 10) | ((uint64_t)setterAccepted << 11) |
-            ((uint64_t)stateTransition << 12) | ((clampCalls & 0xffff) << 16) | ((uint64_t)getpid() << 32);
+            ((uint64_t)stateTransition << 12) | ((uint64_t)restoreLatch << 13) |
+            ((clampCalls & 0xffff) << 16) | ((uint64_t)getpid() << 32);
     }
     if (statusToken >= 0 && notify_set_state(statusToken, state) != NOTIFY_STATUS_OK)
         PCLog("stage=error operation=publish-status");

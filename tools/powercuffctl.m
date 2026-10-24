@@ -42,6 +42,7 @@ static int RequestStatus(void) {
         @"clamp_forwarded": @((state & (1 << 10)) != 0), @"clamp_calls_mod_65536": @((state >> 16) & 0xffff),
         @"setter_readback_matched": @((state & (1 << 11)) != 0),
         @"native_index_transition_observed": @((state & (1 << 12)) != 0),
+        @"emergency_off_latched": @((state & (1 << 13)) != 0),
         @"system_thermal_state": @(NSProcessInfo.processInfo.thermalState), @"performance_effect": @"unmeasured",
         @"restoration": @"Off removes additional caps; verify native-loop recovery with benchmarks"
     };
